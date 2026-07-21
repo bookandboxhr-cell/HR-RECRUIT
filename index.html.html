@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบสรรหาบุคลากร — Recruitment System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#14231f;
+    --ink-soft:#4a5a54;
+    --ink-faint:#8a9791;
+    --paper:#f4f2ec;
+    --card:#ffffff;
+    --line:#e2ddd2;
+    --line-soft:#eee9df;
+    --forest:#1f5c46;
+    --forest-dark:#153f30;
+    --forest-tint:#e7f0ec;
+    --clay:#c15f3c;
+    --clay-tint:#f7e9e2;
+    --gold:#b8862f;
+    --gold-tint:#f6edd8;
+    --sky:#2f6d97;
+    --sky-tint:#e4eef4;
+    --rose:#a83b4e;
+    --rose-tint:#f6e5e8;
+    --plum:#6a4a86;
+    --plum-tint:#efe8f5;
+    --radius:14px;
+    --radius-sm:9px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'IBM Plex Sans Thai',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  /* ===== Shell ===== */
+  .shell{display:flex;min-height:100vh}
+  .sidebar{
+    width:230px;flex-shrink:0;background:var(--forest-dark);color:#dbe8e2;
+    padding:22px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 20px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:14px}
+  .brand-mark{width:34px;height:34px;border-radius:9px;background:var(--clay);display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px;flex-shrink:0}
+  .brand-txt b{display:block;font-size:14px;color:#fff;font-weight:600;letter-spacing:.2px}
+  .brand-txt span{font-size:11px;color:#9fbaae}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:#7a978a;padding:12px 10px 6px;font-weight:600}
+  .nav-item{
+    display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:var(--radius-sm);
+    cursor:pointer;font-size:13.5px;color:#c3d6cd;transition:all .15s;margin-bottom:1px;font-weight:500;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.active{background:var(--forest);color:#fff}
+  .nav-item .ic{width:17px;text-align:center;flex-shrink:0;opacity:.9}
+  .nav-badge{margin-left:auto;background:var(--clay);color:#fff;font-size:10.5px;padding:1px 7px;border-radius:20px;font-weight:600}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{
+    background:var(--card);border-bottom:1px solid var(--line);
+    padding:15px 30px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:20;
+  }
+  .topbar h1{font-size:19px;font-weight:600;letter-spacing:-.2px}
+  .topbar .sub{font-size:12.5px;color:var(--ink-faint);margin-top:1px}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .btn{
+    font-family:inherit;font-size:13px;font-weight:500;border:none;cursor:pointer;
+    padding:9px 16px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:7px;transition:all .15s;
+  }
+  .btn-primary{background:var(--forest);color:#fff}
+  .btn-primary:hover{background:var(--forest-dark)}
+  .btn-ghost{background:var(--line-soft);color:var(--ink-soft)}
+  .btn-ghost:hover{background:var(--line)}
+  .btn-clay{background:var(--clay);color:#fff}
+  .btn-clay:hover{filter:brightness(.94)}
+  .bell{position:relative;width:38px;height:38px;border-radius:10px;background:var(--line-soft);display:grid;place-items:center;cursor:pointer;font-size:17px}
+  .bell .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;background:var(--clay);border-radius:50%;border:2px solid var(--card)}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--gold);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px}
+
+  .content{padding:26px 30px 60px;max-width:1180px;width:100%}
+  .page{display:none}
+  .page.active{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ===== KPI cards ===== */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--forest)}
+  .kpi.clay::before{background:var(--clay)}
+  .kpi.gold::before{background:var(--gold)}
+  .kpi.sky::before{background:var(--sky)}
+  .kpi .k-label{font-size:12.5px;color:var(--ink-faint);font-weight:500;display:flex;align-items:center;gap:6px}
+  .kpi .k-val{font-size:30px;font-weight:700;letter-spacing:-1px;margin-top:6px;font-family:'IBM Plex Mono',monospace}
+  .kpi .k-trend{font-size:11.5px;margin-top:3px;color:var(--forest);font-weight:500}
+  .kpi .k-trend.down{color:var(--rose)}
+
+  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-bottom:18px}
+  .grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .panel h3{font-size:15px;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+  .panel .p-sub{font-size:12px;color:var(--ink-faint);margin-bottom:16px}
+  .panel-hd{display:flex;align-items:flex-start;margin-bottom:16px}
+  .panel-hd .p-sub{margin-bottom:0}
+  .panel-hd > div:first-child h3{margin-bottom:2px}
+
+  /* ===== Funnel ===== */
+  .funnel-stage{display:flex;align-items:center;gap:14px;margin-bottom:11px}
+  .funnel-bar{height:38px;border-radius:8px;display:flex;align-items:center;padding:0 14px;color:#fff;font-weight:600;font-size:13px;transition:width .6s ease;white-space:nowrap}
+  .funnel-meta{font-size:12px;color:var(--ink-faint);flex-shrink:0;width:74px}
+  .funnel-meta b{color:var(--ink);font-size:14px;font-family:'IBM Plex Mono',monospace}
+
+  /* ===== Tables ===== */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-faint);font-weight:600;border-bottom:1.5px solid var(--line)}
+  td{padding:11px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:var(--line-soft)}
+  .pos-cell b{font-weight:600;display:block}
+  .pos-cell span{font-size:11.5px;color:var(--ink-faint)}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .c-new{background:var(--sky-tint);color:var(--sky)}
+  .c-wait{background:var(--gold-tint);color:var(--gold)}
+  .c-interview{background:var(--plum-tint);color:var(--plum)}
+  .c-pass{background:var(--forest-tint);color:var(--forest)}
+  .c-fail{background:var(--rose-tint);color:var(--rose)}
+  .c-contact{background:var(--clay-tint);color:var(--clay)}
+  .c-open{background:var(--forest-tint);color:var(--forest)}
+  .c-closed{background:var(--line-soft);color:var(--ink-faint)}
+
+  .avatar-sm{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+  .name-cell{display:flex;align-items:center;gap:10px}
+  .name-cell b{font-weight:600;font-size:13px}
+  .name-cell span{font-size:11px;color:var(--ink-faint)}
+
+  /* ===== Filter bar ===== */
+  .filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .search-box{flex:1;min-width:200px;position:relative}
+  .search-box input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;background:var(--card)}
+  .search-box input:focus{outline:none;border-color:var(--forest)}
+  .search-box .s-ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:14px}
+  select{padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;background:var(--card);color:var(--ink);cursor:pointer}
+  select:focus{outline:none;border-color:var(--forest)}
+
+  /* ===== Reminders ===== */
+  .rem-item{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+  .rem-item:last-child{border-bottom:none}
+  .rem-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex-shrink:0}
+  .rem-30{background:var(--sky-tint);color:var(--sky)}
+  .rem-60{background:var(--gold-tint);color:var(--gold)}
+  .rem-119{background:var(--rose-tint);color:var(--rose)}
+  .rem-body{flex:1;min-width:0}
+  .rem-body b{font-size:13.5px;font-weight:600}
+  .rem-body .rem-sub{font-size:12px;color:var(--ink-faint)}
+  .rem-due{font-size:12px;font-weight:600;text-align:right;flex-shrink:0}
+  .rem-due.urgent{color:var(--rose)}
+  .rem-due .rem-date{font-weight:400;color:var(--ink-faint);font-size:11px;display:block}
+
+  /* ===== Form preview ===== */
+  .form-preview{max-width:620px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .form-hero{background:var(--forest);color:#fff;padding:26px 30px}
+  .form-hero .badge{display:inline-block;background:rgba(255,255,255,.16);padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:500;margin-bottom:10px}
+  .form-hero h2{font-size:22px;font-weight:600;letter-spacing:-.3px}
+  .form-hero p{font-size:13px;opacity:.85;margin-top:5px}
+  .form-body{padding:26px 30px}
+  .fld{margin-bottom:17px}
+  .fld label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .fld label .req{color:var(--clay)}
+  .fld input,.fld select,.fld textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;background:var(--paper)}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--forest);background:var(--card)}
+  .fld-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .upload-zone{border:1.5px dashed var(--line);border-radius:var(--radius-sm);padding:20px;text-align:center;color:var(--ink-faint);font-size:12.5px;background:var(--paper)}
+  .consent{display:flex;gap:9px;align-items:flex-start;background:var(--forest-tint);padding:12px 14px;border-radius:var(--radius-sm);font-size:12px;color:var(--ink-soft)}
+  .consent input{margin-top:2px;flex-shrink:0}
+
+  .tag-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .mini-tag{font-size:11px;padding:3px 9px;border-radius:6px;background:var(--line-soft);color:var(--ink-soft);font-weight:500}
+
+  /* ===== Analysis cards ===== */
+  .analysis-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:0;margin-bottom:16px;overflow:hidden}
+  .ac-head{padding:15px 20px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--line-soft)}
+  .ac-head .ac-ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex-shrink:0}
+  .ac-head b{font-size:14.5px;font-weight:600}
+  .ac-head .ac-tag{margin-left:auto;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .ac-body{padding:16px 20px}
+  .ac-list{list-style:none}
+  .ac-list li{display:flex;gap:10px;padding:7px 0;font-size:13px;color:var(--ink-soft);align-items:flex-start}
+  .ac-list li .li-ic{color:var(--forest);flex-shrink:0;margin-top:2px;font-weight:700}
+  .ac-list li.add .li-ic{color:var(--clay)}
+
+  .stat-inline{display:flex;gap:22px;flex-wrap:wrap;margin-top:4px}
+  .stat-inline > div{font-size:12px;color:var(--ink-faint)}
+  .stat-inline b{display:block;font-size:19px;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-weight:700;margin-top:2px}
+
+  .section-title{font-size:13px;font-weight:600;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.6px;margin:26px 0 13px;display:flex;align-items:center;gap:8px}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--line)}
+
+  /* toast */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--forest-dark);color:#fff;padding:14px 20px;border-radius:12px;font-size:13px;display:flex;align-items:center;gap:11px;z-index:100;box-shadow:0 8px 30px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:all .3s;max-width:340px}
+  .toast.show{transform:none;opacity:1}
+  .toast .t-ic{width:26px;height:26px;border-radius:7px;background:var(--clay);display:grid;place-items:center;flex-shrink:0}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;justify-content:center}
+  .legend span{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+  .legend span::before{content:'';width:10px;height:10px;border-radius:3px;background:var(--dot)}
+
+  .callout{background:var(--gold-tint);border-left:4px solid var(--gold);border-radius:0 8px 8px 0;padding:14px 18px;font-size:13px;color:var(--ink-soft);margin-bottom:18px}
+  .callout b{color:var(--ink)}
+
+  /* ===== Calendar ===== */
+  .cal-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .cal-nav{display:flex;align-items:center;gap:4px}
+  .cal-arrow{width:34px;height:34px;border:1px solid var(--line);background:var(--card);border-radius:8px;cursor:pointer;font-size:15px;color:var(--ink-soft);display:grid;place-items:center;transition:all .15s}
+  .cal-arrow:hover{border-color:var(--forest);color:var(--forest)}
+  .cal-range{font-size:15px;font-weight:600;padding:0 8px;min-width:170px;text-align:center}
+  .cal-today{font-size:12.5px;padding:8px 14px;border:1px solid var(--line);background:var(--card);border-radius:8px;cursor:pointer;font-weight:500;color:var(--ink-soft)}
+  .cal-today:hover{border-color:var(--forest)}
+  .cal-grid{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .cal-head{display:grid;grid-template-columns:56px repeat(7,1fr);border-bottom:1px solid var(--line)}
+  .cal-head .ch{padding:11px 6px;text-align:center;border-left:1px solid var(--line-soft)}
+  .cal-head .ch:first-child{border-left:none}
+  .cal-head .ch .dow{font-size:11.5px;color:var(--ink-faint);font-weight:500}
+  .cal-head .ch .dnum{font-size:19px;font-weight:600;margin-top:2px;font-family:'IBM Plex Mono',monospace}
+  .cal-head .ch.today .dnum{color:#fff;background:var(--forest);width:32px;height:32px;border-radius:50%;display:inline-grid;place-items:center;font-size:15px;margin:2px auto 0}
+  .cal-body{display:grid;grid-template-columns:56px repeat(7,1fr);max-height:440px;overflow-y:auto}
+  .cal-hours{border-right:1px solid var(--line-soft)}
+  .cal-hour-label{height:52px;font-size:11px;color:var(--ink-faint);text-align:right;padding:2px 8px 0 0;position:relative;top:-7px}
+  .cal-col{border-left:1px solid var(--line-soft);position:relative}
+  .cal-slot{height:52px;border-bottom:1px solid var(--line-soft);cursor:pointer;transition:background .12s}
+  .cal-slot:hover{background:var(--forest-tint)}
+  .cal-event{
+    position:absolute;left:3px;right:3px;border-radius:6px;padding:5px 8px;font-size:11.5px;
+    color:#fff;overflow:hidden;cursor:pointer;line-height:1.35;z-index:2;transition:filter .15s;
+  }
+  .cal-event:hover{filter:brightness(1.06)}
+  .cal-event b{display:block;font-weight:600;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-event span{opacity:.9;font-size:10.5px}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,35,31,.42);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--card);border-radius:16px;width:100%;max-width:440px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .modal-hd{padding:18px 22px 0}
+  .modal-hd input.title-in{width:100%;border:none;font-family:inherit;font-size:19px;font-weight:600;color:var(--ink);padding:6px 0;border-bottom:2px solid var(--line)}
+  .modal-hd input.title-in:focus{outline:none;border-color:var(--forest)}
+  .modal-hd input.title-in::placeholder{color:var(--ink-faint);font-weight:500}
+  .modal-body{padding:16px 22px}
+  .m-row{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:13px;color:var(--ink-soft)}
+  .m-row .m-ic{width:20px;text-align:center;color:var(--ink-faint);flex-shrink:0;font-size:15px}
+  .m-row select,.m-row input{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
+  .m-row select:focus,.m-row input:focus{outline:none;border-color:var(--forest);background:var(--card)}
+  .m-row .grow{flex:1}
+  .m-time-group{display:flex;align-items:center;gap:8px}
+  .modal-ft{display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--line-soft);background:var(--paper)}
+  .modal-ft .more{font-size:12.5px;color:var(--sky);cursor:pointer;font-weight:500}
+  .modal-ft .sp{margin-left:auto}
+
+  /* ===== Candidate detail drawer ===== */
+  .drawer-overlay{position:fixed;inset:0;background:rgba(20,35,31,.42);display:none;z-index:200;justify-content:flex-end}
+  .drawer-overlay.show{display:flex;animation:fade .2s ease}
+  .drawer{width:100%;max-width:520px;height:100%;background:var(--card);overflow-y:auto;animation:slideIn .28s cubic-bezier(.2,.7,.3,1)}
+  @keyframes slideIn{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
+  .dr-hero{padding:24px 26px 20px;color:#fff;position:relative}
+  .dr-close{position:absolute;top:18px;right:20px;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:16px;cursor:pointer;display:grid;place-items:center}
+  .dr-close:hover{background:rgba(255,255,255,.28)}
+  .dr-hero .dr-avatar{width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:22px;font-weight:600;margin-bottom:12px}
+  .dr-hero h2{font-size:22px;font-weight:600;letter-spacing:-.3px}
+  .dr-hero .dr-pos{font-size:13.5px;opacity:.9;margin-top:3px}
+  .dr-hero .dr-chip{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(255,255,255,.2);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500}
+  .dr-body{padding:22px 26px}
+  .dr-sec{margin-bottom:22px}
+  .dr-sec-t{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-faint);font-weight:600;margin-bottom:11px;display:flex;align-items:center;gap:7px}
+  .dr-field{display:flex;padding:8px 0;font-size:13.5px;border-bottom:1px solid var(--line-soft)}
+  .dr-field:last-child{border-bottom:none}
+  .dr-field .dr-k{width:150px;flex-shrink:0;color:var(--ink-faint)}
+  .dr-field .dr-v{color:var(--ink);font-weight:500}
+  .dr-file{display:flex;align-items:center;gap:11px;padding:12px 14px;background:var(--paper);border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .15s}
+  .dr-file:hover{border-color:var(--forest)}
+  .dr-file .dr-file-ic{width:38px;height:38px;border-radius:9px;background:var(--rose-tint);color:var(--rose);display:grid;place-items:center;font-size:17px;flex-shrink:0}
+  .dr-file b{font-size:13px;display:block}
+  .dr-file span{font-size:11.5px;color:var(--ink-faint)}
+  .dr-timeline{position:relative;padding-left:22px}
+  .dr-timeline::before{content:'';position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .dr-tl-item{position:relative;padding:0 0 15px}
+  .dr-tl-item:last-child{padding-bottom:0}
+  .dr-tl-item::before{content:'';position:absolute;left:-19px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--forest);border:2px solid var(--card)}
+  .dr-tl-item.pending::before{background:var(--line);}
+  .dr-tl-item b{font-size:13px;display:block}
+  .dr-tl-item span{font-size:12px;color:var(--ink-faint)}
+  .dr-actions{display:flex;gap:9px;padding:16px 26px;border-top:1px solid var(--line-soft);background:var(--paper);position:sticky;bottom:0}
+  .sched{display:flex;align-items:center;gap:6px}
+  .sched-input{
+    font-family:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);
+    border-radius:7px;background:var(--paper);color:var(--ink);cursor:pointer;transition:all .15s;
+  }
+  .sched-input:hover{border-color:var(--forest);background:var(--card)}
+  .sched-input:focus{outline:none;border-color:var(--forest);background:var(--card);box-shadow:0 0 0 3px var(--forest-tint)}
+  .sched-input.time{width:88px}
+  .sched-input.dirty{border-color:var(--clay);background:var(--clay-tint)}
+  .save-btn{
+    width:30px;height:30px;border:none;border-radius:7px;background:var(--line-soft);color:var(--ink-faint);
+    cursor:pointer;font-size:14px;display:grid;place-items:center;transition:all .15s;flex-shrink:0;
+  }
+  .save-btn.active{background:var(--forest);color:#fff}
+  .save-btn.active:hover{background:var(--forest-dark)}
+
+  @media(max-width:920px){
+    .sidebar{display:none}
+    .kpi-row{grid-template-columns:repeat(2,1fr)}
+    .grid-2,.grid-2b{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">GT</div>
+      <div class="brand-txt"><b>ระบบสรรหาบุคลากร</b><span>Golden Time Printing</span></div>
+    </div>
+    <div class="nav-label">เมนูหลัก</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)"><span class="ic">◆</span> ภาพรวม Dashboard</div>
+    <div class="nav-item" onclick="nav('positions',this)"><span class="ic">▦</span> ตำแหน่งที่เปิดรับ <span class="nav-badge">6</span></div>
+    <div class="nav-item" onclick="nav('candidates',this)"><span class="ic">☰</span> ผู้สมัครทั้งหมด <span class="nav-badge">24</span></div>
+    <div class="nav-item" onclick="nav('interview',this)"><span class="ic">◈</span> ตารางสัมภาษณ์</div>
+    <div class="nav-item" onclick="nav('calendar',this)"><span class="ic">▤</span> ปฏิทินสัมภาษณ์</div>
+    <div class="nav-item" onclick="nav('probation',this)"><span class="ic">◔</span> ประเมินทดลองงาน <span class="nav-badge">3</span></div>
+    <div class="nav-item" onclick="nav('talent',this)"><span class="ic">★</span> คลังผู้สมัครเก่า <span class="nav-badge">5</span></div>
+    <div class="nav-label">เครื่องมือ</div>
+    <div class="nav-item" onclick="nav('form',this)"><span class="ic">✎</span> ฟอร์มสมัครออนไลน์</div>
+    <div class="nav-item" onclick="nav('analysis',this)"><span class="ic">✦</span> บทวิเคราะห์ระบบ</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">ภาพรวม Dashboard</h1>
+        <div class="sub" id="pageSub">สรุปข้อมูลการสรรหาทั้งหมด · อัปเดตล่าสุดวันนี้</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" onclick="nav('form',document.querySelectorAll('.nav-item')[7])">+ เปิดฟอร์มสมัคร</button>
+        <div class="bell" onclick="showToast('มีผู้สมัครใหม่ 2 คน · ครบประเมิน 119 วัน 1 คน')"><span>🔔</span><span class="dot"></span></div>
+        <div class="avatar">น</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ DASHBOARD ============ -->
+      <div class="page active" id="page-dashboard">
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="k-label">ตำแหน่งเปิดรับ</div>
+            <div class="k-val">6</div>
+            <div class="k-trend">+2 จากเดือนก่อน</div>
+          </div>
+          <div class="kpi sky">
+            <div class="k-label">ผู้สมัครทั้งหมด</div>
+            <div class="k-val">24</div>
+            <div class="k-trend">+9 สัปดาห์นี้</div>
+          </div>
+          <div class="kpi gold">
+            <div class="k-label">รอสัมภาษณ์</div>
+            <div class="k-val">5</div>
+            <div class="k-trend">นัดแล้ว 3 คน</div>
+          </div>
+          <div class="kpi clay">
+            <div class="k-label">รับเข้าทำงาน</div>
+            <div class="k-val">4</div>
+            <div class="k-trend">อัตราผ่าน 67%</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>เส้นทางการสรรหา (Funnel)</h3>
+                <div class="p-sub">จากยอดผู้สมัครทั้งหมดจนถึงรับเข้าทำงาน</div>
+              </div>
+            </div>
+            <div id="funnel"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>สัดส่วนสถานะผู้สมัคร</h3>
+                <div class="p-sub">แยกตามสถานะปัจจุบัน</div>
+              </div>
+            </div>
+            <div style="height:200px"><canvas id="statusChart"></canvas></div>
+            <div class="legend">
+              <span style="--dot:var(--sky)">สมัครใหม่</span>
+              <span style="--dot:var(--gold)">รอสัมภาษณ์</span>
+              <span style="--dot:var(--plum)">สัมภาษณ์แล้ว</span>
+              <span style="--dot:var(--forest)">ผ่าน</span>
+              <span style="--dot:var(--rose)">ไม่ผ่าน</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>ช่องทางที่ได้ผู้สมัคร</h3>
+                <div class="p-sub">วัดว่าประกาศช่องไหนได้ผลที่สุด</div>
+              </div>
+            </div>
+            <div style="height:220px"><canvas id="sourceChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>⚠ ต้องทำสัปดาห์นี้</h3>
+                <div class="p-sub">รายการที่ระบบเตือนอัตโนมัติ</div>
+              </div>
+            </div>
+            <div class="rem-item">
+              <div class="rem-icon rem-119">119</div>
+              <div class="rem-body"><b>คุณธนพล ศรีสุข</b><div class="rem-sub">พนักงานพิมพ์ · ครบ 119 วัน (ก่อนพ้นทดลอง)</div></div>
+              <div class="rem-due urgent">อีก 2 วัน<span class="rem-date">22 ก.ค.</span></div>
+            </div>
+            <div class="rem-item">
+              <div class="rem-icon rem-60">60</div>
+              <div class="rem-body"><b>คุณพิมพ์ชนก วงศ์ดี</b><div class="rem-sub">ออกแบบกราฟิก · ครบประเมิน 2 เดือน</div></div>
+              <div class="rem-due">อีก 4 วัน<span class="rem-date">24 ก.ค.</span></div>
+            </div>
+            <div class="rem-item">
+              <div class="rem-icon rem-30">30</div>
+              <div class="rem-body"><b>คุณอานนท์ ใจดี</b><div class="rem-sub">ฝ่ายขาย · ครบประเมิน 1 เดือน</div></div>
+              <div class="rem-due">อีก 6 วัน<span class="rem-date">26 ก.ค.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ POSITIONS ============ -->
+      <div class="page" id="page-positions">
+        <div class="filter-bar">
+          <div class="search-box"><span class="s-ic">⌕</span><input placeholder="ค้นหาตำแหน่ง..."></div>
+          <select><option>ทุกสถานะ</option><option>เปิดรับ</option><option>ปิดรับ</option></select>
+          <button class="btn btn-clay">+ เพิ่มตำแหน่งใหม่</button>
+        </div>
+        <div class="panel" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ตำแหน่ง</th><th>แผนก</th><th>วันเปิดรับ</th><th>ผู้สมัคร</th><th>ระยะเวลาสรรหา</th><th>สถานะ</th></tr></thead>
+              <tbody>
+                <tr><td class="pos-cell"><b>พนักงานพิมพ์ออฟเซ็ต</b><span>REQ-2568-01</span></td><td>ฝ่ายผลิต</td><td>1 ก.ค. 2568</td><td><b>7</b> คน</td><td>19 วัน</td><td><span class="chip c-open">เปิดรับ</span></td></tr>
+                <tr><td class="pos-cell"><b>นักออกแบบกราฟิก</b><span>REQ-2568-02</span></td><td>ฝ่ายออกแบบ</td><td>28 มิ.ย. 2568</td><td><b>5</b> คน</td><td>22 วัน</td><td><span class="chip c-open">เปิดรับ</span></td></tr>
+                <tr><td class="pos-cell"><b>พนักงานขาย</b><span>REQ-2568-03</span></td><td>ฝ่ายขาย</td><td>5 ก.ค. 2568</td><td><b>4</b> คน</td><td>15 วัน</td><td><span class="chip c-open">เปิดรับ</span></td></tr>
+                <tr><td class="pos-cell"><b>เจ้าหน้าที่บัญชี</b><span>REQ-2568-04</span></td><td>ฝ่ายบัญชี</td><td>20 มิ.ย. 2568</td><td><b>6</b> คน</td><td>30 วัน</td><td><span class="chip c-closed">ปิดรับ</span></td></tr>
+                <tr><td class="pos-cell"><b>ช่างเทคนิคเครื่องจักร</b><span>REQ-2568-05</span></td><td>ฝ่ายผลิต</td><td>10 ก.ค. 2568</td><td><b>2</b> คน</td><td>10 วัน</td><td><span class="chip c-open">เปิดรับ</span></td></tr>
+                <tr><td class="pos-cell"><b>ธุรการฝ่ายบุคคล</b><span>REQ-2568-06</span></td><td>ฝ่ายบุคคล</td><td>8 ก.ค. 2568</td><td><b>0</b> คน</td><td>12 วัน</td><td><span class="chip c-open">เปิดรับ</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CANDIDATES ============ -->
+      <div class="page" id="page-candidates">
+        <div class="filter-bar">
+          <div class="search-box"><span class="s-ic">⌕</span><input placeholder="ค้นหาชื่อผู้สมัคร..." id="candSearch" oninput="filterCand()"></div>
+          <select id="filterPos" onchange="filterCand()">
+            <option value="">ทุกตำแหน่ง</option>
+            <option>พนักงานพิมพ์ออฟเซ็ต</option>
+            <option>นักออกแบบกราฟิก</option>
+            <option>พนักงานขาย</option>
+            <option>เจ้าหน้าที่บัญชี</option>
+          </select>
+          <select id="filterStatus" onchange="filterCand()">
+            <option value="">ทุกสถานะ</option>
+            <option value="new">สมัครใหม่</option>
+            <option value="wait">รอสัมภาษณ์</option>
+            <option value="contact">รอติดต่อสอบถาม</option>
+            <option value="pass">ผ่าน</option>
+            <option value="fail">ไม่ผ่าน</option>
+          </select>
+        </div>
+        <div class="panel" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ผู้สมัคร</th><th>ตำแหน่ง</th><th>วันที่สมัคร</th><th>ช่องทาง</th><th>เงินเดือนคาดหวัง</th><th>สถานะ</th></tr></thead>
+              <tbody id="candBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Candidate detail drawer -->
+      <div class="drawer-overlay" id="candDrawer" onclick="if(event.target===this)closeCand()">
+        <div class="drawer" id="candDrawerInner"></div>
+      </div>
+
+      <!-- ============ INTERVIEW ============ -->
+      <div class="page" id="page-interview">
+        <div class="callout">📅 <b>ตารางนัดสัมภาษณ์</b> — กดที่ช่อง <b>วันนัด</b> เพื่อเลือกจากปฏิทิน และช่อง <b>เวลา</b> เพื่อเลือกเวลา แก้ไขได้ทันทีแล้วกดปุ่ม 💾 บันทึก · กดผลเพื่อบันทึกว่าผ่านหรือไม่ผ่าน</div>
+        <div class="panel" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ผู้สมัคร</th><th>ตำแหน่ง</th><th>วันนัดสัมภาษณ์</th><th>เวลา</th><th>ผู้สัมภาษณ์</th><th>บันทึกผล</th></tr></thead>
+              <tbody id="interviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CALENDAR ============ -->
+      <div class="page" id="page-calendar">
+        <div class="callout">▤ <b>ปฏิทินสัมภาษณ์</b> — กดที่ช่องเวลาว่างในวันไหนก็ได้ เพื่อสร้างนัดสัมภาษณ์ใหม่ (หน้าต่างจะเด้งขึ้นมาให้กรอกข้อมูล) หรือกดที่นัดที่มีอยู่เพื่อดู/แก้ไข · นัดจากหน้า "ตารางสัมภาษณ์" จะมาแสดงที่นี่อัตโนมัติ</div>
+        <div class="cal-toolbar">
+          <button class="cal-today" onclick="showToast('กลับมาที่สัปดาห์ปัจจุบัน')">วันนี้</button>
+          <div class="cal-nav">
+            <button class="cal-arrow" onclick="showToast('สัปดาห์ก่อนหน้า')">‹</button>
+            <span class="cal-range" id="calRange">21 – 27 ก.ค. 2568</span>
+            <button class="cal-arrow" onclick="showToast('สัปดาห์ถัดไป')">›</button>
+          </div>
+          <button class="btn btn-clay" style="margin-left:auto" onclick="openModal(null,null)">+ สร้างนัดสัมภาษณ์</button>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-head" id="calHead"></div>
+          <div class="cal-body" id="calBody"></div>
+        </div>
+      </div>
+
+      <!-- Calendar event modal (full-screen overlay) -->
+      <div class="modal-overlay" id="calModal" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <div class="modal-hd">
+            <input class="title-in" id="mTitle" placeholder="เพิ่มชื่อเรื่อง — เช่น สัมภาษณ์นักออกแบบ">
+          </div>
+          <div class="modal-body">
+            <div class="m-row">
+              <span class="m-ic">👤</span>
+              <select class="grow" id="mCand">
+                <option value="">เลือกผู้สมัคร...</option>
+                <option>ปวีณา รักงาน — นักออกแบบกราฟิก</option>
+                <option>กิตติพงษ์ มั่นคง — พนักงานพิมพ์ออฟเซ็ต</option>
+                <option>สุรีย์พร ทองแท้ — พนักงานขาย</option>
+                <option>อรวรรณ สุขใจ — นักออกแบบกราฟิก</option>
+                <option>ชัยวัฒน์ พงษ์ไทย — พนักงานพิมพ์ออฟเซ็ต</option>
+              </select>
+            </div>
+            <div class="m-row">
+              <span class="m-ic">🕐</span>
+              <div class="m-time-group">
+                <input type="date" id="mDate" value="2025-07-22">
+                <input type="time" id="mStart" value="10:00">
+                <span>—</span>
+                <input type="time" id="mEnd" value="10:30">
+              </div>
+            </div>
+            <div class="m-row">
+              <span class="m-ic">📍</span>
+              <select class="grow" id="mRoom">
+                <option>ห้องประชุมชั้น 2</option>
+                <option>ห้องสัมภาษณ์ HR</option>
+                <option>สัมภาษณ์ออนไลน์ (Google Meet)</option>
+                <option>หน้างานฝ่ายผลิต</option>
+              </select>
+            </div>
+            <div class="m-row">
+              <span class="m-ic">👥</span>
+              <select class="grow" id="mInterviewer">
+                <option>คุณหน่ำ (HR)</option>
+                <option>คุณหน่ำ + หัวหน้าฝ่ายผลิต</option>
+                <option>คุณหน่ำ + หัวหน้าฝ่ายออกแบบ</option>
+                <option>คุณหน่ำ + ผู้จัดการ</option>
+              </select>
+            </div>
+            <div class="m-row" style="align-items:flex-start">
+              <span class="m-ic">✎</span>
+              <textarea class="grow" id="mNote" rows="2" placeholder="เพิ่มคำอธิบาย / โน้ต (ไม่บังคับ)" style="resize:vertical"></textarea>
+            </div>
+          </div>
+          <div class="modal-ft">
+            <span class="more" onclick="showToast('ในระบบจริง: ส่งอีเมล/LINE ยืนยันนัดให้ผู้สมัครและผู้สัมภาษณ์')">ตัวเลือกเพิ่มเติม</span>
+            <div class="sp"></div>
+            <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+            <button class="btn btn-primary" onclick="saveModal()">บันทึก</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PROBATION ============ -->
+      <div class="page" id="page-probation">
+        <div class="callout">⏱ <b>ระบบเตือนประเมินทดลองงาน</b> — คำนวณอัตโนมัติจาก "วันเริ่มงาน" ของพนักงานที่ผ่านการสัมภาษณ์ นับเป็นวันปฏิทินตามกฎหมาย เตือน 3 จุด: 30 วัน / 60 วัน / 119 วัน (ก่อนพ้น 120 วันซึ่งเป็นเกณฑ์ค่าชดเชยตาม พ.ร.บ.คุ้มครองแรงงาน)</div>
+        <div class="grid-2b">
+          <div class="panel">
+            <h3 style="margin-bottom:16px">พนักงานที่อยู่ระหว่างทดลองงาน</h3>
+            <div class="rem-item">
+              <div class="avatar-sm" style="background:var(--forest);width:40px;height:40px;border-radius:10px">ธน</div>
+              <div class="rem-body"><b>ธนพล ศรีสุข</b><div class="rem-sub">พนักงานพิมพ์ · เริ่มงาน 25 มี.ค. 2568</div>
+                <div class="tag-row"><span class="mini-tag" style="background:var(--sky-tint);color:var(--sky)">✓ 30 วัน</span><span class="mini-tag" style="background:var(--gold-tint);color:var(--gold)">✓ 60 วัน</span><span class="mini-tag" style="background:var(--rose-tint);color:var(--rose)">⚠ 119 วัน (อีก 2 วัน)</span></div>
+              </div>
+            </div>
+            <div class="rem-item">
+              <div class="avatar-sm" style="background:var(--clay);width:40px;height:40px;border-radius:10px">พช</div>
+              <div class="rem-body"><b>พิมพ์ชนก วงศ์ดี</b><div class="rem-sub">ออกแบบกราฟิก · เริ่มงาน 25 พ.ค. 2568</div>
+                <div class="tag-row"><span class="mini-tag" style="background:var(--sky-tint);color:var(--sky)">✓ 30 วัน</span><span class="mini-tag" style="background:var(--gold-tint);color:var(--gold)">⚠ 60 วัน (อีก 4 วัน)</span><span class="mini-tag">119 วัน</span></div>
+              </div>
+            </div>
+            <div class="rem-item">
+              <div class="avatar-sm" style="background:var(--gold);width:40px;height:40px;border-radius:10px">อน</div>
+              <div class="rem-body"><b>อานนท์ ใจดี</b><div class="rem-sub">ฝ่ายขาย · เริ่มงาน 26 มิ.ย. 2568</div>
+                <div class="tag-row"><span class="mini-tag" style="background:var(--sky-tint);color:var(--sky)">⚠ 30 วัน (อีก 6 วัน)</span><span class="mini-tag">60 วัน</span><span class="mini-tag">119 วัน</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:6px">ตัวอย่างการแจ้งเตือน</h3>
+            <div class="p-sub" style="margin-bottom:16px">ระบบส่งอีเมล + LINE ให้ HR อัตโนมัติทุกเช้า</div>
+            <div style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px;font-size:13px">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft)">
+                <div class="avatar-sm" style="background:var(--forest)">GT</div>
+                <div><b style="font-size:12.5px">ระบบสรรหา — แจ้งเตือนอัตโนมัติ</b><br><span style="font-size:11px;color:var(--ink-faint)">วันนี้ 08:00 น.</span></div>
+              </div>
+              <p style="color:var(--ink-soft);line-height:1.7">🔔 <b>เตือนประเมินทดลองงาน</b><br>
+              พนักงาน <b>ธนพล ศรีสุข</b> (พนักงานพิมพ์)<br>
+              จะครบ <b style="color:var(--rose)">119 วัน ในวันที่ 22 ก.ค. 2568</b> (อีก 2 วัน)<br><br>
+              ⚡ กรุณาประเมินและตัดสินใจเรื่องการบรรจุ/เลิกจ้างก่อนครบ 120 วัน เพื่อให้เป็นไปตามกฎหมายแรงงาน<br><br>
+              <span style="color:var(--forest);font-weight:600">→ เปิดดูใน Dashboard</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TALENT POOL ============ -->
+      <div class="page" id="page-talent">
+        <div class="callout">★ <b>คลังผู้สมัครเก่า (Talent Pool)</b> — เก็บผู้สมัครที่มีศักยภาพแต่ยังไม่ได้รับในรอบนั้น (เช่น ผ่านสัมภาษณ์แต่ตำแหน่งเต็ม หรือเก่งแต่สมัครผิดตำแหน่ง) เมื่อมีตำแหน่งใหม่ที่เหมาะกว่า กดปุ่ม "เรียกกลับ" เพื่อดึงเข้าสู่กระบวนการสรรหาได้ทันที ไม่ต้องประกาศหาใหม่</div>
+        <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kpi">
+            <div class="k-label">ผู้สมัครในคลัง</div>
+            <div class="k-val">5</div>
+            <div class="k-trend">พร้อมเรียกกลับ</div>
+          </div>
+          <div class="kpi gold">
+            <div class="k-label">เคยผ่านสัมภาษณ์</div>
+            <div class="k-val">2</div>
+            <div class="k-trend">คุณภาพสูง</div>
+          </div>
+          <div class="kpi sky">
+            <div class="k-label">เรียกกลับสำเร็จ</div>
+            <div class="k-val">1</div>
+            <div class="k-trend">ประหยัดเวลาสรรหา</div>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="search-box"><span class="s-ic">⌕</span><input placeholder="ค้นหาในคลังผู้สมัคร..." id="talentSearch" oninput="filterTalent()"></div>
+          <select id="talentPos" onchange="filterTalent()">
+            <option value="">ทุกตำแหน่งที่เคยสมัคร</option>
+            <option>นักออกแบบกราฟิก</option>
+            <option>พนักงานพิมพ์ออฟเซ็ต</option>
+            <option>พนักงานขาย</option>
+            <option>เจ้าหน้าที่บัญชี</option>
+          </select>
+        </div>
+        <div class="panel" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ผู้สมัคร</th><th>ตำแหน่งที่เคยสมัคร</th><th>เคยสมัครเมื่อ</th><th>เหตุผลที่เข้าคลัง</th><th>คะแนน</th><th>การจัดการ</th></tr></thead>
+              <tbody id="talentBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ FORM ============ -->
+      <div class="page" id="page-form">
+        <div class="callout">🔗 <b>ลิงก์ฟอร์มสมัครออนไลน์</b> — แชร์ลิงก์นี้ในประกาศรับสมัคร ผู้สมัครกรอกเองได้ทันที พอกดส่ง ข้อมูลจะวิ่งเข้าฐานข้อมูลแยกตามตำแหน่ง และระบบจะแจ้งเตือน HR อัตโนมัติ</div>
+        <div class="form-preview">
+          <div class="form-hero">
+            <span class="badge">Golden Time Printing · รับสมัครงาน</span>
+            <h2>ใบสมัครงานออนไลน์</h2>
+            <p>กรอกข้อมูลให้ครบถ้วน ทีมงานจะติดต่อกลับภายใน 3-5 วันทำการ</p>
+          </div>
+          <div class="form-body">
+            <div class="fld">
+              <label>ตำแหน่งที่สมัคร <span class="req">*</span></label>
+              <select><option>— เลือกตำแหน่ง —</option><option>พนักงานพิมพ์ออฟเซ็ต</option><option>นักออกแบบกราฟิก</option><option>พนักงานขาย</option><option>ช่างเทคนิคเครื่องจักร</option><option>ธุรการฝ่ายบุคคล</option></select>
+            </div>
+            <div class="fld-row">
+              <div class="fld"><label>ชื่อ-นามสกุล <span class="req">*</span></label><input placeholder="เช่น สมชาย ใจดี"></div>
+              <div class="fld"><label>เบอร์โทรศัพท์ <span class="req">*</span></label><input placeholder="08x-xxx-xxxx"></div>
+            </div>
+            <div class="fld-row">
+              <div class="fld"><label>อีเมล</label><input placeholder="email@example.com"></div>
+              <div class="fld"><label>อายุ</label><input placeholder="ปี"></div>
+            </div>
+            <div class="fld-row">
+              <div class="fld"><label>เงินเดือนที่คาดหวัง <span class="req">*</span></label><input placeholder="บาท"></div>
+              <div class="fld"><label>พร้อมเริ่มงานวันที่</label><input type="date"></div>
+            </div>
+            <div class="fld">
+              <label>ประสบการณ์ทำงาน / ระดับการศึกษา</label>
+              <textarea rows="2" placeholder="สรุปย่อ"></textarea>
+            </div>
+            <div class="fld">
+              <label>รู้จักตำแหน่งนี้จากช่องทางไหน</label>
+              <select><option>— เลือก —</option><option>JobThai</option><option>Facebook</option><option>LINE OpenChat</option><option>คนรู้จักแนะนำ</option><option>ป้ายหน้าบริษัท</option><option>อื่นๆ</option></select>
+            </div>
+            <div class="fld">
+              <label>แนบเรซูเม่ / รูปถ่าย</label>
+              <div class="upload-zone">📎 ลากไฟล์มาวาง หรือคลิกเพื่อเลือก (PDF, JPG · ไม่เกิน 10MB)</div>
+            </div>
+            <div class="consent">
+              <input type="checkbox">
+              <span>ข้าพเจ้ายินยอมให้บริษัทเก็บและใช้ข้อมูลส่วนบุคคลเพื่อการพิจารณารับสมัครงาน ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA)</span>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-top:18px" onclick="showToast('ส่งใบสมัครสำเร็จ! HR ได้รับแจ้งเตือนทางอีเมล + LINE แล้ว')">ส่งใบสมัคร →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ANALYSIS ============ -->
+      <div class="page" id="page-analysis">
+        <div class="panel" style="margin-bottom:20px;background:var(--forest-dark);border:none;color:#fff">
+          <h3 style="color:#fff;font-size:17px">บทวิเคราะห์: ระบบของคุณครบถ้วนแค่ไหน?</h3>
+          <div class="p-sub" style="color:#a9c4b8;margin-bottom:14px">ประเมินสิ่งที่คุณระบุมา + ข้อเสนอเพิ่มเติมสำหรับใช้งานจริง</div>
+          <div class="stat-inline">
+            <div>ฟีเจอร์ที่คุณคิดครบแล้ว<b style="color:#fff">8 / 8 ✓</b></div>
+            <div>ข้อเสนอเพิ่มเพื่อใช้งานจริง<b style="color:#f0b98a">7 รายการ</b></div>
+            <div>ความพร้อมนำไปทำจริง<b style="color:#fff">สูง</b></div>
+          </div>
+        </div>
+
+        <div class="section-title">✓ สิ่งที่คุณระบุมา — ครบถ้วนดีมาก</div>
+        <div class="analysis-card">
+          <div class="ac-head"><div class="ac-ic" style="background:var(--forest-tint);color:var(--forest)">✓</div><b>โครงหลักครบทุกส่วน</b><span class="ac-tag" style="background:var(--forest-tint);color:var(--forest)">ผ่าน</span></div>
+          <div class="ac-body"><ul class="ac-list">
+            <li><span class="li-ic">✓</span> ฟอร์มสมัครออนไลน์ + แจ้งเตือนกลับอัตโนมัติ + ข้อมูลเข้าฐานข้อมูลแยกตามตำแหน่ง</li>
+            <li><span class="li-ic">✓</span> เพิ่ม/ลบผู้สมัคร และ dropdown กรองดูตามสถานะ</li>
+            <li><span class="li-ic">✓</span> สถานะครบ: ไม่ผ่าน / รอสัมภาษณ์ (ระบุวันเวลา) / รอติดต่อ / อื่นๆ</li>
+            <li><span class="li-ic">✓</span> workflow หลังสัมภาษณ์: ผ่าน (กรอกวันเริ่มงาน เงินเดือน) / ไม่ผ่าน (ระบุเหตุผล)</li>
+            <li><span class="li-ic">✓</span> เตือนประเมินทดลองงาน 1 เดือน / 2 เดือน / 119 วัน แบบเชื่อมอัตโนมัติ</li>
+            <li><span class="li-ic">✓</span> Dashboard สรุปภาพรวม</li>
+          </ul></div>
+        </div>
+
+        <div class="section-title">✦ ข้อเสนอเพิ่มเติม — ทำให้ทำงานง่ายขึ้นและลดขั้นตอน</div>
+
+        <div class="analysis-card">
+          <div class="ac-head"><div class="ac-ic" style="background:var(--clay-tint);color:var(--clay)">1</div><b>ในฟอร์มสมัคร ควรเพิ่ม</b><span class="ac-tag" style="background:var(--clay-tint);color:var(--clay)">แนะนำ</span></div>
+          <div class="ac-body"><ul class="ac-list">
+            <li class="add"><span class="li-ic">+</span> <b>ช่องเงินเดือนที่คาดหวัง</b> — คัดกรองเบื้องต้นได้ทันที ไม่ต้องโทรถามทีหลัง</li>
+            <li class="add"><span class="li-ic">+</span> <b>ช่อง "รู้จักจากช่องทางไหน"</b> — วัดว่าประกาศช่องไหนคุ้มที่สุด (ลดงบโฆษณาที่ไม่ได้ผล)</li>
+            <li class="add"><span class="li-ic">+</span> <b>แนบเรซูเม่/รูปถ่าย</b> — ดูข้อมูลครบก่อนเรียกสัมภาษณ์</li>
+            <li class="add"><span class="li-ic">+</span> <b>checkbox ยินยอม PDPA</b> — จำเป็นตามกฎหมายเมื่อเก็บข้อมูลส่วนบุคคล</li>
+          </ul></div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="ac-head"><div class="ac-ic" style="background:var(--gold-tint);color:var(--gold)">2</div><b>ในระบบติดตาม ควรเพิ่ม</b><span class="ac-tag" style="background:var(--gold-tint);color:var(--gold)">ลดขั้นตอน</span></div>
+          <div class="ac-body"><ul class="ac-list">
+            <li class="add"><span class="li-ic">+</span> <b>รหัสผู้สมัคร/ตำแหน่งอัตโนมัติ</b> (เช่น REQ-2568-01) — อ้างอิงง่าย ไม่สับสนเวลามีชื่อซ้ำ</li>
+            <li class="add"><span class="li-ic">+</span> <b>ตัวนับระยะเวลาสรรหา</b> (วันเปิดรับ → วันรับเข้า) — เห็นว่าตำแหน่งไหนหาคนยาก วางแผนล่วงหน้าได้</li>
+            <li class="add"><span class="li-ic">+</span> <b>สถานะ "สมัครใหม่"</b> เพิ่มก่อน "รอสัมภาษณ์" — แยกคนที่ยังไม่ได้คัดกรองออกจากคนที่นัดแล้ว</li>
+            <li><span class="li-ic">✓</span> <b>บันทึกประวัติผู้สมัครเก่า (คลังผู้สมัคร)</b> — เพิ่มแล้ว: คนที่เคยสมัครแต่ไม่ผ่าน เรียกกลับมาเมื่อมีตำแหน่งใหม่ที่เหมาะกว่าได้</li>
+          </ul></div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="ac-head"><div class="ac-ic" style="background:var(--plum-tint);color:var(--plum)">3</div><b>ต่อยอดในอนาคต (ถ้าอยากได้เพิ่ม)</b><span class="ac-tag" style="background:var(--plum-tint);color:var(--plum)">ทางเลือก</span></div>
+          <div class="ac-body"><ul class="ac-list">
+            <li class="add"><span class="li-ic">+</span> <b>เชื่อมประเมินทดลองงานเข้ากับหัวหน้าแผนก</b> — ส่งแบบประเมินให้หัวหน้ากรอกคะแนนออนไลน์ ไม่ต้องเดินเอกสาร</li>
+            <li class="add"><span class="li-ic">+</span> <b>ส่งต่อข้อมูลพนักงานที่ผ่านเข้าระบบ HR หลัก</b> — ไม่ต้องคีย์ข้อมูลซ้ำตอนบรรจุ (เชื่อมกับทะเบียนประวัติ/เงินเดือน)</li>
+            <li class="add"><span class="li-ic">+</span> <b>อีเมลตอบกลับผู้สมัครอัตโนมัติ</b> — "ได้รับใบสมัครแล้ว" สร้างภาพลักษณ์บริษัทที่ดี</li>
+          </ul></div>
+        </div>
+
+        <div class="callout" style="background:var(--forest-tint);border-color:var(--forest)">
+          💡 <b>สรุปสำหรับผู้บริหาร:</b> ระบบนี้ทำได้ด้วย Google Forms + Google Sheets + Apps Script โดย<b>ไม่มีค่าใช้จ่ายรายเดือน</b> ใช้เครื่องมือที่บริษัทมีอยู่แล้ว ลดเวลางาน HR ในการติดตามผู้สมัครและประเมินทดลองงานได้มาก และลดความเสี่ยงพลาดกำหนด 120 วันตามกฎหมายแรงงาน
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><div class="t-ic">✓</div><span id="toastMsg"></span></div>
+
+<script>
+const pageMeta={
+  dashboard:['ภาพรวม Dashboard','สรุปข้อมูลการสรรหาทั้งหมด · อัปเดตล่าสุดวันนี้'],
+  positions:['ตำแหน่งที่เปิดรับ','จัดการตำแหน่งงานและติดตามจำนวนผู้สมัคร'],
+  candidates:['ผู้สมัครทั้งหมด','ฐานข้อมูลผู้สมัคร แยกตามตำแหน่งและสถานะ'],
+  interview:['ตารางสัมภาษณ์','ผู้สมัครที่นัดสัมภาษณ์แล้ว พร้อมบันทึกผล'],
+  calendar:['ปฏิทินสัมภาษณ์','มุมมองสัปดาห์ · กดที่วันเพื่อสร้างหรือแก้ไขนัด'],
+  probation:['ประเมินทดลองงาน','เตือนวันครบประเมิน 30 / 60 / 119 วันอัตโนมัติ'],
+  talent:['คลังผู้สมัครเก่า','ผู้สมัครที่มีศักยภาพ พร้อมเรียกกลับเมื่อมีตำแหน่งใหม่'],
+  form:['ฟอร์มสมัครออนไลน์','ตัวอย่างฟอร์มที่ผู้สมัครเห็นเมื่อเปิดลิงก์'],
+  analysis:['บทวิเคราะห์ระบบ','ประเมินความครบถ้วนและข้อเสนอเพิ่มเติม']
+};
+function nav(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('pageTitle').textContent=pageMeta[id][0];
+  document.getElementById('pageSub').textContent=pageMeta[id][1];
+  window.scrollTo(0,0);
+}
+let toastTimer;
+function showToast(msg){
+  document.getElementById('toastMsg').textContent=msg;
+  const t=document.getElementById('toast');t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ===== Candidate data =====
+const cands=[
+  ['ปวีณา รักงาน','085-xxx-1122','นักออกแบบกราฟิก','20 ก.ค.','Facebook','25,000','wait','รอสัมภาษณ์',['var(--plum)']],
+  ['กิตติพงษ์ มั่นคง','089-xxx-3344','พนักงานพิมพ์ออฟเซ็ต','19 ก.ค.','JobThai','18,000','wait','รอสัมภาษณ์',['var(--sky)']],
+  ['สุรีย์พร ทองแท้','081-xxx-5566','พนักงานขาย','19 ก.ค.','คนรู้จักแนะนำ','20,000','wait','รอสัมภาษณ์',['var(--gold)']],
+  ['อรวรรณ สุขใจ','086-xxx-7788','นักออกแบบกราฟิก','18 ก.ค.','JobThai','28,000','new','สมัครใหม่',['var(--forest)']],
+  ['ชัยวัฒน์ พงษ์ไทย','082-xxx-9900','พนักงานพิมพ์ออฟเซ็ต','18 ก.ค.','ป้ายหน้าบริษัท','17,500','new','สมัครใหม่',['var(--clay)']],
+  ['นภัสสร บุญมี','090-xxx-2211','เจ้าหน้าที่บัญชี','17 ก.ค.','JobThai','22,000','contact','รอติดต่อสอบถาม',['var(--rose)']],
+  ['ธนพล ศรีสุข','083-xxx-3322','พนักงานพิมพ์ออฟเซ็ต','1 ก.ค.','Facebook','18,000','pass','ผ่าน (รับเข้า)',['var(--forest)']],
+  ['พิมพ์ชนก วงศ์ดี','087-xxx-4433','นักออกแบบกราฟิก','5 ก.ค.','JobThai','26,000','pass','ผ่าน (รับเข้า)',['var(--plum)']],
+  ['วีระ เข้มแข็ง','088-xxx-5544','พนักงานขาย','12 ก.ค.','LINE OpenChat','19,000','fail','ไม่ผ่าน',['var(--gold)']],
+  ['จันทิมา อ่อนหวาน','084-xxx-6655','เจ้าหน้าที่บัญชี','10 ก.ค.','Facebook','23,000','fail','ไม่ผ่าน',['var(--sky)']],
+];
+const chipClass={new:'c-new',wait:'c-wait',contact:'c-contact',pass:'c-pass',fail:'c-fail'};
+function renderCand(list){
+  document.getElementById('candBody').innerHTML=list.map(c=>{
+    const init=c[0].split(' ')[0].slice(0,2);
+    const gi=cands.indexOf(c);
+    return `<tr style="cursor:pointer" onclick="openCand(${gi})"><td class="name-cell"><div class="avatar-sm" style="background:${c[8][0]}">${init}</div><div><b>${c[0]}</b><span>${c[1]}</span></div></td>
+    <td>${c[2]}</td><td>${c[3]}</td><td><span style="font-size:12px;color:var(--ink-soft)">${c[4]}</span></td>
+    <td class="mono">${c[5]}</td><td><span class="chip ${chipClass[c[6]]}">${c[7]}</span> <span style="color:var(--ink-faint);font-size:12px;margin-left:4px">›</span></td></tr>`;
+  }).join('');
+}
+function filterCand(){
+  const q=document.getElementById('candSearch').value.toLowerCase();
+  const pos=document.getElementById('filterPos').value;
+  const st=document.getElementById('filterStatus').value;
+  renderCand(cands.filter(c=>
+    c[0].toLowerCase().includes(q) &&
+    (!pos||c[2]===pos) &&
+    (!st||c[6]===st)
+  ));
+}
+renderCand(cands);
+
+// ===== Candidate detail drawer =====
+// extra form data per candidate (what they filled in the online form)
+const candDetail={
+  'ปวีณา รักงาน':{age:'28 ปี',email:'paweena.r@email.com',start:'1 ส.ค. 2568',edu:'ปริญญาตรี ออกแบบนิเทศศิลป์ · ประสบการณ์ 4 ปี',note:'เคยทำงานโรงพิมพ์ 2 ปี ถนัด Illustrator/InDesign',resume:'resume_paweena.pdf'},
+  'กิตติพงษ์ มั่นคง':{age:'32 ปี',email:'kittipong.m@email.com',start:'ทันที',edu:'ปวส. การพิมพ์ · ประสบการณ์ 8 ปี',note:'เคยคุมเครื่องพิมพ์ 4 สี ทำงานกะได้',resume:'resume_kittipong.pdf'},
+  'สุรีย์พร ทองแท้':{age:'26 ปี',email:'sureeporn.t@email.com',start:'15 ส.ค. 2568',edu:'ปริญญาตรี บริหารธุรกิจ · ประสบการณ์ 3 ปี',note:'มีรถยนต์ส่วนตัว ออกพบลูกค้าได้',resume:'resume_sureeporn.pdf'},
+};
+function openCand(idx){
+  const c=cands[idx];
+  const d=candDetail[c[0]]||{age:'—',email:'—',start:'—',edu:'ผู้สมัครกรอกในฟอร์ม',note:'—',resume:'resume.pdf'};
+  const init=c[0].split(' ')[0].slice(0,2);
+  const statusText={new:'สมัครใหม่',wait:'รอสัมภาษณ์',contact:'รอติดต่อสอบถาม',pass:'ผ่าน (รับเข้า)',fail:'ไม่ผ่าน'}[c[6]];
+  // build timeline based on status
+  let tl=`<div class="dr-tl-item"><b>ส่งใบสมัครออนไลน์</b><span>${c[3]} 2568 · ผ่าน${c[4]}</span></div>`;
+  if(['wait','pass','fail'].includes(c[6])) tl+=`<div class="dr-tl-item"><b>ผ่านการคัดกรองเบื้องต้น</b><span>นัดสัมภาษณ์</span></div>`;
+  if(['pass','fail'].includes(c[6])) tl+=`<div class="dr-tl-item"><b>สัมภาษณ์แล้ว</b><span>ผล: ${c[6]==='pass'?'ผ่าน ✓':'ไม่ผ่าน ✕'}</span></div>`;
+  if(c[6]==='pass') tl+=`<div class="dr-tl-item"><b>รับเข้าทำงาน — เริ่มทดลองงาน</b><span>เข้าสู่ระบบประเมิน 30/60/119 วัน</span></div>`;
+  if(c[6]==='new') tl+=`<div class="dr-tl-item pending"><b>รอคัดกรอง</b><span>ยังไม่ได้ดำเนินการ</span></div>`;
+  if(c[6]==='contact') tl+=`<div class="dr-tl-item pending"><b>รอติดต่อสอบถามข้อมูลเพิ่ม</b><span>—</span></div>`;
+
+  document.getElementById('candDrawerInner').innerHTML=`
+    <div class="dr-hero" style="background:${c[8][0]}">
+      <button class="dr-close" onclick="closeCand()">✕</button>
+      <div class="dr-avatar">${init}</div>
+      <h2>${c[0]}</h2>
+      <div class="dr-pos">${c[2]}</div>
+      <div class="dr-chip">● ${statusText}</div>
+    </div>
+    <div class="dr-body">
+      <div class="dr-sec">
+        <div class="dr-sec-t">📋 ข้อมูลที่ผู้สมัครกรอกในฟอร์ม</div>
+        <div class="dr-field"><span class="dr-k">เบอร์โทรศัพท์</span><span class="dr-v">${c[1]}</span></div>
+        <div class="dr-field"><span class="dr-k">อีเมล</span><span class="dr-v">${d.email}</span></div>
+        <div class="dr-field"><span class="dr-k">อายุ</span><span class="dr-v">${d.age}</span></div>
+        <div class="dr-field"><span class="dr-k">เงินเดือนที่คาดหวัง</span><span class="dr-v">${c[5]} บาท</span></div>
+        <div class="dr-field"><span class="dr-k">พร้อมเริ่มงาน</span><span class="dr-v">${d.start}</span></div>
+        <div class="dr-field"><span class="dr-k">รู้จักจากช่องทาง</span><span class="dr-v">${c[4]}</span></div>
+        <div class="dr-field"><span class="dr-k">การศึกษา/ประสบการณ์</span><span class="dr-v">${d.edu}</span></div>
+        <div class="dr-field"><span class="dr-k">หมายเหตุจากผู้สมัคร</span><span class="dr-v">${d.note}</span></div>
+      </div>
+      <div class="dr-sec">
+        <div class="dr-sec-t">📎 เอกสารแนบ</div>
+        <div class="dr-file" onclick="showToast('เปิดดูเรซูเม่ที่ผู้สมัครแนบมา')">
+          <div class="dr-file-ic">📄</div>
+          <div><b>${d.resume}</b><span>เรซูเม่ · แนบผ่านฟอร์มออนไลน์</span></div>
+        </div>
+      </div>
+      <div class="dr-sec">
+        <div class="dr-sec-t">🕐 ประวัติการดำเนินการ</div>
+        <div class="dr-timeline">${tl}</div>
+      </div>
+    </div>
+    <div class="dr-actions">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="showToast('เปลี่ยนสถานะ / นัดสัมภาษณ์')">เปลี่ยนสถานะ</button>
+      ${c[6]==='fail'?`<button class="btn btn-clay" onclick="showToast('เพิ่ม ${c[0]} เข้าคลังผู้สมัครเก่า → เรียกกลับได้เมื่อมีตำแหน่งใหม่')">★ เก็บเข้าคลัง</button>`:''}
+      <button class="btn btn-ghost" onclick="showToast('ในระบบจริง: เปิดแถวข้อมูลนี้ใน Google Sheet')">ดูใน Sheet</button>
+    </div>`;
+  document.getElementById('candDrawer').classList.add('show');
+}
+function closeCand(){document.getElementById('candDrawer').classList.remove('show')}
+
+// ===== Talent pool (คลังผู้สมัครเก่า) =====
+const talent=[
+  ['อรพิน เจริญสุข','086-xxx-8811','นักออกแบบกราฟิก','มี.ค. 2568','ผ่านสัมภาษณ์ แต่ตำแหน่งเต็มแล้ว',5,'var(--plum)'],
+  ['สมศักดิ์ ทองดี','081-xxx-7722','พนักงานพิมพ์ออฟเซ็ต','ก.พ. 2568','ผ่านสัมภาษณ์ รอบสุดท้าย เลือกอีกคน',4,'var(--sky)'],
+  ['กนกวรรณ ศรีทอง','089-xxx-6633','พนักงานขาย','เม.ย. 2568','โปรไฟล์ดี แต่สมัครผิดตำแหน่ง',4,'var(--gold)'],
+  ['ธีระพงษ์ แก้วใส','082-xxx-5544','เจ้าหน้าที่บัญชี','ม.ค. 2568','ประสบการณ์ดี ขอเงินเดือนสูงเกินงบรอบนั้น',4,'var(--forest)'],
+  ['พรทิพย์ มีสุข','085-xxx-4455','นักออกแบบกราฟิก','พ.ค. 2568','เด็กจบใหม่ ศักยภาพสูง ยังไม่มีตำแหน่งเหมาะ',3,'var(--clay)'],
+];
+function stars(n){return '★'.repeat(n)+'☆'.repeat(5-n)}
+function renderTalent(list){
+  document.getElementById('talentBody').innerHTML=list.map(t=>{
+    const init=t[0].split(' ')[0].slice(0,2);
+    return `<tr>
+      <td class="name-cell"><div class="avatar-sm" style="background:${t[6]}">${init}</div><div><b>${t[0]}</b><span>${t[1]}</span></div></td>
+      <td>${t[2]}</td>
+      <td><span style="font-size:12.5px;color:var(--ink-soft)">${t[3]}</span></td>
+      <td><span style="font-size:12.5px;color:var(--ink-soft)">${t[4]}</span></td>
+      <td><span style="color:var(--gold);font-size:13px;letter-spacing:1px">${stars(t[5])}</span></td>
+      <td><button class="btn btn-clay" style="padding:6px 13px;font-size:12px" onclick="showToast('เรียกกลับ ${t[0]} → ดึงเข้าสู่กระบวนการสรรหาตำแหน่งใหม่ + ส่งข้อความติดต่อกลับ')">↩ เรียกกลับ</button></td>
+    </tr>`;
+  }).join('');
+}
+function filterTalent(){
+  const q=document.getElementById('talentSearch').value.toLowerCase();
+  const pos=document.getElementById('talentPos').value;
+  renderTalent(talent.filter(t=>t[0].toLowerCase().includes(q)&&(!pos||t[2]===pos)));
+}
+renderTalent(talent);
+
+// ===== Interview schedule (editable date/time) =====
+const interviews=[
+  ['ปวีณา รักงาน','085-xxx-1122','นักออกแบบกราฟิก','2025-07-22','10:00','คุณหน่ำ (HR)','var(--plum)','ปว'],
+  ['กิตติพงษ์ มั่นคง','089-xxx-3344','พนักงานพิมพ์ออฟเซ็ต','2025-07-23','14:00','คุณหน่ำ + หัวหน้าฝ่ายผลิต','var(--sky)','กต'],
+  ['สุรีย์พร ทองแท้','081-xxx-5566','พนักงานขาย','2025-07-24','09:30','คุณหน่ำ (HR)','var(--gold)','สร'],
+];
+const thMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thaiDate(iso){
+  if(!iso)return '—';
+  const [y,m,d]=iso.split('-').map(Number);
+  return `${d} ${thMonths[m-1]} ${y+543}`;
+}
+function renderInterviews(){
+  document.getElementById('interviewBody').innerHTML=interviews.map((v,i)=>`
+    <tr>
+      <td class="name-cell"><div class="avatar-sm" style="background:${v[6]}">${v[7]}</div><div><b>${v[0]}</b><span>${v[1]}</span></div></td>
+      <td>${v[2]}</td>
+      <td><input type="date" class="sched-input" id="date-${i}" value="${v[3]}" onchange="markDirty(${i})"></td>
+      <td><input type="time" class="sched-input time" id="time-${i}" value="${v[4]}" onchange="markDirty(${i})"></td>
+      <td>${v[5]}</td>
+      <td>
+        <div class="sched">
+          <button class="save-btn" id="save-${i}" title="บันทึกวันเวลา" onclick="saveSchedule(${i})">💾</button>
+          <button class="btn btn-primary" style="padding:6px 11px;font-size:12px" onclick="showToast('บันทึกผล: ผ่าน → เปิดฟอร์มกรอกวันเริ่มงาน/เงินเดือน')">✓ ผ่าน</button>
+          <button class="btn btn-ghost" style="padding:6px 11px;font-size:12px" onclick="showToast('บันทึกผล: ไม่ผ่าน → กรอกเหตุผล')">✕ ไม่ผ่าน</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+function markDirty(i){
+  document.getElementById('date-'+i).classList.add('dirty');
+  document.getElementById('time-'+i).classList.add('dirty');
+  document.getElementById('save-'+i).classList.add('active');
+}
+function saveSchedule(i){
+  const d=document.getElementById('date-'+i).value;
+  const t=document.getElementById('time-'+i).value;
+  interviews[i][3]=d;interviews[i][4]=t;
+  document.getElementById('date-'+i).classList.remove('dirty');
+  document.getElementById('time-'+i).classList.remove('dirty');
+  document.getElementById('save-'+i).classList.remove('active');
+  showToast(`บันทึกนัดสัมภาษณ์: ${interviews[i][0]} · ${thaiDate(d)} เวลา ${t} น. → ส่งแจ้งเตือนผู้สมัครแล้ว`);
+}
+renderInterviews();
+
+// ===== Calendar week view =====
+const calDays=[
+  {dow:'อาทิตย์',dnum:21,iso:'2025-07-21'},
+  {dow:'จันทร์',dnum:22,iso:'2025-07-22',today:false},
+  {dow:'อังคาร',dnum:23,iso:'2025-07-23'},
+  {dow:'พุธ',dnum:24,iso:'2025-07-24'},
+  {dow:'พฤหัส',dnum:25,iso:'2025-07-25'},
+  {dow:'ศุกร์',dnum:26,iso:'2025-07-26'},
+  {dow:'เสาร์',dnum:27,iso:'2025-07-27'},
+];
+const calHours=[8,9,10,11,12,13,14,15,16,17];
+// events: {dayIndex, startHour(decimal), endHour, title, sub, color}
+const calEvents=[
+  {day:1,start:10,end:10.5,title:'สัมภาษณ์ ปวีณา',sub:'นักออกแบบกราฟิก',color:'var(--plum)'},
+  {day:2,start:14,end:15,title:'สัมภาษณ์ กิตติพงษ์',sub:'พนักงานพิมพ์',color:'var(--sky)'},
+  {day:3,start:9.5,end:10,title:'สัมภาษณ์ สุรีย์พร',sub:'พนักงานขาย',color:'var(--gold)'},
+];
+function renderCalendar(){
+  document.getElementById('calHead').innerHTML='<div class="ch"></div>'+calDays.map(d=>
+    `<div class="ch ${d.today?'today':''}"><div class="dow">${d.dow}</div><div class="dnum">${d.dnum}</div></div>`
+  ).join('');
+
+  let hoursCol='<div class="cal-hours">'+calHours.map(h=>
+    `<div class="cal-hour-label">${h}:00</div>`
+  ).join('')+'</div>';
+
+  let cols='';
+  calDays.forEach((d,di)=>{
+    let slots='';
+    calHours.forEach(h=>{
+      slots+=`<div class="cal-slot" onclick="openModal(${di},${h})"></div>`;
+    });
+    // events for this day
+    let evs='';
+    calEvents.filter(e=>e.day===di).forEach(e=>{
+      const top=(e.start-calHours[0])*52;
+      const height=Math.max(28,(e.end-e.start)*52-3);
+      const t1=fmtHour(e.start), t2=fmtHour(e.end);
+      evs+=`<div class="cal-event" style="top:${top}px;height:${height}px;background:${e.color}" onclick="event.stopPropagation();editEvent(${calEvents.indexOf(e)})">
+        <b>${e.title}</b><span>${t1} · ${e.sub}</span></div>`;    });
+    cols+=`<div class="cal-col">${slots}${evs}</div>`;
+  });
+  document.getElementById('calBody').innerHTML=hoursCol+cols;
+}
+function fmtHour(h){
+  const hh=Math.floor(h);const mm=(h-hh)*60;
+  return `${hh}:${mm===0?'00':mm}`;
+}
+renderCalendar();
+
+// ===== Modal =====
+function openModal(dayIndex,hour){
+  const m=document.getElementById('calModal');
+  document.getElementById('mTitle').value='';
+  document.getElementById('mCand').value='';
+  document.getElementById('mNote').value='';
+  if(dayIndex!==null){
+    document.getElementById('mDate').value=calDays[dayIndex].iso;
+  }
+  if(hour!==null){
+    const h=String(hour).padStart(2,'0');
+    document.getElementById('mStart').value=h+':00';
+    document.getElementById('mEnd').value=String(hour).padStart(2,'0')+':30';
+  }
+  m.classList.add('show');
+}
+function closeModal(){document.getElementById('calModal').classList.remove('show')}
+function saveModal(){
+  const cand=document.getElementById('mCand').value;
+  const title=document.getElementById('mTitle').value||'นัดสัมภาษณ์';
+  const date=document.getElementById('mDate').value;
+  const start=document.getElementById('mStart').value;
+  closeModal();
+  showToast(`บันทึกนัด: ${cand||title} · ${thaiDate(date)} เวลา ${start} น. → ส่งแจ้งเตือนแล้ว`);
+}
+function editEvent(idx){
+  const e=calEvents[idx];
+  document.getElementById('mTitle').value=e.title;
+  document.getElementById('mNote').value='';
+  document.getElementById('mDate').value=calDays[e.day].iso;
+  const sh=Math.floor(e.start), sm=(e.start-sh)*60;
+  const eh=Math.floor(e.end), em=(e.end-eh)*60;
+  document.getElementById('mStart').value=`${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')}`;
+  document.getElementById('mEnd').value=`${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`;
+  document.getElementById('calModal').classList.add('show');
+}
+
+// ===== Funnel =====
+const funnelData=[['ผู้สมัครทั้งหมด',24,'var(--sky)'],['ผ่านคัดกรอง',14,'var(--gold)'],['เข้าสัมภาษณ์',9,'var(--plum)'],['ผ่านสัมภาษณ์',6,'var(--forest)'],['รับเข้าทำงาน',4,'var(--clay)']];
+document.getElementById('funnel').innerHTML=funnelData.map(f=>{
+  const w=Math.max(18,(f[1]/24)*100);
+  return `<div class="funnel-stage"><div class="funnel-meta"><b>${f[1]}</b> คน</div><div class="funnel-bar" style="width:${w}%;background:${f[2]}">${f[0]}</div></div>`;
+}).join('');
+
+// ===== Charts =====
+window.addEventListener('load',()=>{
+  const ink='#4a5a54';
+  new Chart(document.getElementById('statusChart'),{
+    type:'doughnut',
+    data:{labels:['สมัครใหม่','รอสัมภาษณ์','สัมภาษณ์แล้ว','ผ่าน','ไม่ผ่าน'],
+      datasets:[{data:[6,5,4,4,5],backgroundColor:['#2f6d97','#b8862f','#6a4a86','#1f5c46','#a83b4e'],borderWidth:2,borderColor:'#fff'}]},
+    options:{plugins:{legend:{display:false}},cutout:'62%',responsive:true,maintainAspectRatio:false}
+  });
+  new Chart(document.getElementById('sourceChart'),{
+    type:'bar',
+    data:{labels:['JobThai','Facebook','คนแนะนำ','LINE','ป้ายหน้าบริษัท'],
+      datasets:[{data:[9,6,4,3,2],backgroundColor:'#1f5c46',borderRadius:6,barThickness:26}]},
+    options:{plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false,
+      scales:{x:{grid:{display:false},ticks:{color:ink,font:{family:'IBM Plex Sans Thai',size:12}}},
+      y:{grid:{color:'#eee9df'},ticks:{color:ink,stepSize:3}}}}
+  });
+});
+</script>
+</body>
+</html>
